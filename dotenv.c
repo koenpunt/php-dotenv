@@ -57,7 +57,7 @@ PHP_FUNCTION(dotenv_load)
     char buf[512];
 
     if (php_stream_gets(stream, buf, sizeof(buf))) {
-      if(sscanf(buf, "%[^=]=%s", name, value)){
+      if(sscanf(buf, "%[A-Za-z0-9_]=%s", name, value)){
         setenv(name, value, replace);
       }
     }
