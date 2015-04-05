@@ -87,7 +87,7 @@ PHP_FUNCTION(dotenv_load)
 }
 
 // parse php_stream into HashTable
-void dotenv_parse_stream(php_stream *stream, HashTable *vars)
+static void dotenv_parse_stream(php_stream *stream, HashTable *vars)
 {
   char name[256];
   char value[256];
@@ -108,7 +108,7 @@ void dotenv_parse_stream(php_stream *stream, HashTable *vars)
   php_stream_close(stream);
 }
 
-void dotenv_inject_vars(HashTable *vars, bool replace)
+static void dotenv_inject_vars(HashTable *vars, bool replace)
 {
   char *data;
   char *key;

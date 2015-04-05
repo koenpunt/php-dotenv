@@ -15,8 +15,8 @@ ZEND_END_MODULE_GLOBALS(dotenv)
 #define DOTENV_G(v) (dotenv_globals.v)
 #endif
 
-void dotenv_inject_vars(HashTable *vars, bool replace);
-void dotenv_parse_stream(php_stream *stream, HashTable *vars);
+static void dotenv_inject_vars(HashTable *vars, bool replace);
+static void dotenv_parse_stream(php_stream *stream, HashTable *vars);
 
 extern zend_module_entry dotenv_module_entry;
 #define phpext_dotenv_ptr &dotenv_module_entry
