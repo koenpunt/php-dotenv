@@ -6,6 +6,7 @@
 PHP_FUNCTION(dotenv_load);
 
 void dotenv_inject_vars(HashTable *vars, bool replace);
+HashTable* dotenv_parse_stream(php_stream *stream);
 
 extern zend_module_entry dotenv_module_entry;
 #define phpext_dotenv_ptr &dotenv_module_entry

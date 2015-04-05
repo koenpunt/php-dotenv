@@ -42,8 +42,6 @@ PHP_FUNCTION(dotenv_load)
     RETURN_NULL();
   }
 
-  HashTable *vars;
-
   char resolved_path[MAXPATHLEN];
 
   if(VCWD_REALPATH(filename, resolved_path)){
@@ -53,14 +51,29 @@ PHP_FUNCTION(dotenv_load)
   }
 
   // TODO: Test if there's configuration in memory for filename
+  HashTable *vars;
 
-  // Stream
-  php_stream *stream;
+  // if(!zend_hash_find(env_files, resolved_path, sizeof(resolved_path) + 1, (void **) &vars)){
+    // .env file is not found in hashtable so we parse the file
+    php_stream *stream;
 
-  stream = php_stream_open_wrapper(filename, "rb", ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
-  if(!stream) {
-    RETURN_FALSE;
-  }
+    stream = php_stream_open_wrapper(resolved_path, "rb", ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
+    if(!stream) {
+      RETURN_FALSE;
+    }
+
+    vars = dotenv_parse_stream(stream);
+  // }
+
+  dotenv_inject_vars(vars, replace);
+
+  RETURN_TRUE;
+}
+
+// parse php_stream into hashtable
+HashTable* dotenv_parse_stream(php_stream *stream)
+{
+  HashTable *vars;
 
   // Allocate new hash table
   ALLOC_HASHTABLE(vars);
@@ -83,17 +96,15 @@ PHP_FUNCTION(dotenv_load)
     }
   }
   php_stream_close(stream);
-
-  dotenv_inject_vars(vars, replace);
-
-  RETURN_TRUE;
+  
+  return vars;
 }
 
 void dotenv_inject_vars(HashTable *vars, bool replace)
 {
   zval **data;
-  char *key, *value;
-  uint keylen, valuelen;
+  char *key;
+  uint keylen, datalen;
 
   ulong keyindex;
 
@@ -104,15 +115,10 @@ void dotenv_inject_vars(HashTable *vars, bool replace)
        zend_hash_get_current_data_ex(vars, (void **) &data, &position) == SUCCESS;
        zend_hash_move_forward_ex(vars, &position)
   ){
-    if(zend_hash_get_current_key_ex(vars, &key, &keylen,
-      &keyindex, 0, &position) == HASH_KEY_IS_STRING){
-
-      // valuelen = Z_STRLEN_PP(data);
-      // value = estrndup(Z_STRVAL_PP(data), valuelen);
-
-      // set environment variables
-      // value = Z_STRVAL_PP(data);
-      setenv(key, data, replace);
-    };
+    zend_hash_get_current_key_ex(vars, &key, &keylen,
+      &keyindex, 0, &position);
+      char *value; //[Z_STRLEN_PP(data)];
+        value = data;
+      setenv(key, value, replace);
   }
 }
