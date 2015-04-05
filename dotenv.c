@@ -30,6 +30,8 @@ zend_module_entry dotenv_module_entry = {
 ZEND_GET_MODULE(dotenv)
 #endif
 
+ZEND_DECLARE_MODULE_GLOBALS(dotenv);
+
 PHP_FUNCTION(dotenv_load)
 {
   // Arguments
@@ -51,18 +53,19 @@ PHP_FUNCTION(dotenv_load)
     }
   }
 
-  // HashTable *env_files;
-  // // Allocate new persistent hash table
-  // ALLOC_HASHTABLE(env_files);
-  // zend_hash_init(env_files, 8, NULL, NULL, 0); // 1 = persistent
+  HashTable env_files = DOTENV_G(env_files);
+
+  // Initialize persistent hash table
+  zend_hash_init(&env_files, 8, NULL, NULL, 1);
 
   HashTable *vars;
 
-  // Allocate new hash table
+  // Allocate hash table for current variables
   ALLOC_HASHTABLE(vars);
   zend_hash_init(vars, 8, NULL, NULL, 0); // 0 should be 1 to live on after request
 
-  // if(!zend_hash_find(env_files, resolved_path, sizeof(resolved_path) + 1, (void **) &vars)){
+  if(zend_hash_find(&env_files, resolved_path, sizeof(resolved_path), (void **) &vars) == FAILURE){
+
     // .env file is not found in hashtable so we parse the file
     php_stream *stream;
 
@@ -72,8 +75,8 @@ PHP_FUNCTION(dotenv_load)
     }
 
     dotenv_parse_stream(stream, vars);
-    // zend_hash_update(env_files, resolved_path, sizeof(resolved_path), vars, sizeof(vars), NULL);
-  // }
+    zend_hash_update(&env_files, resolved_path, sizeof(resolved_path), vars, sizeof(vars), NULL);
+  }
 
   dotenv_inject_vars(vars, replace);
 
