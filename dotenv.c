@@ -37,21 +37,30 @@ PHP_FUNCTION(dotenv_load)
   int filename_len;
   zend_bool replace = 0;
 
-  // recovers a string (s) and an boolean (b) from arguments
+  // recovers a filepath as string (p) and an boolean (b) from arguments
   if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|pb", &filename, &filename_len, &replace) == FAILURE) {
     RETURN_NULL();
   }
 
   char resolved_path[MAXPATHLEN];
 
+  // expand filepath
   if(VCWD_REALPATH(filename, resolved_path)){
     if(php_check_open_basedir(resolved_path)){ // is this necessary?
       RETURN_FALSE;
     }
   }
 
-  // TODO: Test if there's configuration in memory for filename
+  // HashTable *env_files;
+  // // Allocate new persistent hash table
+  // ALLOC_HASHTABLE(env_files);
+  // zend_hash_init(env_files, 8, NULL, NULL, 0); // 1 = persistent
+
   HashTable *vars;
+
+  // Allocate new hash table
+  ALLOC_HASHTABLE(vars);
+  zend_hash_init(vars, 8, NULL, NULL, 0); // 0 should be 1 to live on after request
 
   // if(!zend_hash_find(env_files, resolved_path, sizeof(resolved_path) + 1, (void **) &vars)){
     // .env file is not found in hashtable so we parse the file
@@ -62,23 +71,21 @@ PHP_FUNCTION(dotenv_load)
       RETURN_FALSE;
     }
 
-    vars = dotenv_parse_stream(stream);
+    dotenv_parse_stream(stream, vars);
+    // zend_hash_update(env_files, resolved_path, sizeof(resolved_path), vars, sizeof(vars), NULL);
   // }
 
   dotenv_inject_vars(vars, replace);
 
+  zend_hash_destroy(vars);
+  FREE_HASHTABLE(vars);
+
   RETURN_TRUE;
 }
 
-// parse php_stream into hashtable
-HashTable* dotenv_parse_stream(php_stream *stream)
+// parse php_stream into HashTable
+void dotenv_parse_stream(php_stream *stream, HashTable *vars)
 {
-  HashTable *vars;
-
-  // Allocate new hash table
-  ALLOC_HASHTABLE(vars);
-  zend_hash_init(vars, 8, NULL, NULL, 0); // 0 should be 1 to live on after request
-
   char name[256];
   char value[256];
 
@@ -91,13 +98,11 @@ HashTable* dotenv_parse_stream(php_stream *stream)
       // as long as it's not a =
       if(sscanf(buf, "%[^=]=%[^\n]", name, value)){
         // Store variable in hash table
-        zend_hash_update(vars, name, sizeof(name), value, sizeof(value), NULL);
+        zend_hash_update(vars, name, sizeof(name)+1, value, sizeof(value)+1, NULL);
       }
     }
   }
   php_stream_close(stream);
-  
-  return vars;
 }
 
 void dotenv_inject_vars(HashTable *vars, bool replace)
