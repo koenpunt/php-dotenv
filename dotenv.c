@@ -102,23 +102,21 @@ HashTable* dotenv_parse_stream(php_stream *stream)
 
 void dotenv_inject_vars(HashTable *vars, bool replace)
 {
-  zval **data;
+  char *data;
   char *key;
-  uint keylen, datalen;
+  uint keylen;
 
   ulong keyindex;
 
   HashPosition position;
 
-  // Loop over hash table
+  // Iterate through hash table
   for(zend_hash_internal_pointer_reset_ex(vars, &position);
        zend_hash_get_current_data_ex(vars, (void **) &data, &position) == SUCCESS;
        zend_hash_move_forward_ex(vars, &position)
   ){
-    zend_hash_get_current_key_ex(vars, &key, &keylen,
-      &keyindex, 0, &position);
-      char *value; //[Z_STRLEN_PP(data)];
-        value = data;
-      setenv(key, value, replace);
+    zend_hash_get_current_key_ex(vars, &key, &keylen, &keyindex, 0, &position);
+      // set environment variable
+      setenv(key, data, replace);
   }
 }

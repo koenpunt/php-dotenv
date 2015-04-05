@@ -53,3 +53,4 @@ libtool
 ltmain.sh
 missing
 mkinstalldirs
+/tmp
