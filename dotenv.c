@@ -52,7 +52,7 @@ PHP_FUNCTION(dotenv_load)
 
   // expand filepath
   if(VCWD_REALPATH(filename, resolved_path)){
-    if(php_check_open_basedir(resolved_path)){ // is this necessary?
+    if(php_check_open_basedir(resolved_path TSRMLS_CC)){ // is this necessary?
       RETURN_FALSE;
     }
   }
@@ -91,7 +91,7 @@ static void dotenv_parse_stream(php_stream *stream, HashTable *vars)
   char name[256];
   char value[256];
 
-  while(!php_stream_eof(stream)) {
+  while(!php_stream_eof(stream TSRMLS_CC)) {
     char buf[512];
 
     // Parse stream line by line
