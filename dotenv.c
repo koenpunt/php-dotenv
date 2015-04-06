@@ -1,9 +1,13 @@
-#include <stdbool.h>
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
 #include "php.h"
+#include "main/php_version.h"
+
+#if HAVE_DOTENV
+
+#include "TSRM.h"
 #include "php_dotenv.h"
 
 static zend_function_entry dotenv_functions[] = {
@@ -129,3 +133,5 @@ static void dotenv_inject_vars(HashTable *vars, bool replace)
       setenv(key, data, replace);
   }
 }
+
+#endif
