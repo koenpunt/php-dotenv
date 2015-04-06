@@ -7,6 +7,7 @@
 
 #if HAVE_DOTENV
 
+#include <stdbool.h>
 #include "TSRM.h"
 #include "php_dotenv.h"
 
