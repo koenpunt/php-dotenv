@@ -8,7 +8,13 @@
 #if HAVE_DOTENV
 
 #include <stdbool.h>
+
+#ifdef ZTS
 #include "TSRM.h"
+#endif
+
+#include "main/SAPI.h"
+
 #include "php_dotenv.h"
 
 static zend_function_entry dotenv_functions[] = {
