@@ -3,7 +3,7 @@
 #endif
 
 #include "php.h"
-#include "main/php_version.h"
+#include "php_streams.h"
 
 #if HAVE_DOTENV
 
@@ -13,24 +13,20 @@
 
 static zend_function_entry dotenv_functions[] = {
     PHP_FE(dotenv_load, NULL)
-    {NULL, NULL, NULL}
+    {NULL, NULL, 0, 0, 0}
 };
 
 zend_module_entry dotenv_module_entry = {
-#if ZEND_MODULE_API_NO >= 20010901
-    STANDARD_MODULE_HEADER,
-#endif
-    PHP_DOTENV_EXTNAME,
-    dotenv_functions,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-#if ZEND_MODULE_API_NO >= 20010901
-    PHP_DOTENV_VERSION,
-#endif
-    STANDARD_MODULE_PROPERTIES
+  STANDARD_MODULE_HEADER,
+  PHP_DOTENV_EXTNAME,
+  dotenv_functions,
+  PHP_MINIT(dotenv),
+  PHP_MSHUTDOWN(dotenv),
+  NULL, // PHP_RINIT(dotenv)
+  NULL, // PHP_RSHUTDOWN(dotenv)
+  NULL, // PHP_MINFO(dotenv)
+  PHP_DOTENV_VERSION,
+  STANDARD_MODULE_PROPERTIES
 };
 
 #ifdef COMPILE_DL_DOTENV
@@ -62,9 +58,6 @@ PHP_FUNCTION(dotenv_load)
   }
 
   env_files = DOTENV_G(env_files);
-
-  // Initialize persistent hash table
-  zend_hash_init(&env_files, 8, NULL, NULL, 1);
 
   // Allocate hash table for current variables
   ALLOC_HASHTABLE(vars);
@@ -133,6 +126,25 @@ static void dotenv_inject_vars(HashTable *vars, bool replace)
       // set environment variable
       setenv(key, data, replace);
   }
+}
+
+
+PHP_MINIT_FUNCTION(dotenv)
+{
+  // Initialize persistent hash table
+  zend_hash_init(&DOTENV_G(env_files), 8, NULL, NULL, 1);
+
+  return SUCCESS;
+}
+
+PHP_MSHUTDOWN_FUNCTION(dotenv)
+{
+#ifdef ZTS
+  ts_free_id(dotenv_globals_id);
+#else
+
+#endif
+  return SUCCESS;
 }
 
 #endif
