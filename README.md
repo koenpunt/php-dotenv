@@ -14,8 +14,8 @@ No dependencies are needed, other than the php-dev packages.
 Default extension building process applies:
 
 ```sh
-git clone https://github.com/koenpunt/php-dotenv-extension.git
-cd php-dotenv-extension
+git clone https://github.com/koenpunt/php-dotenv.git
+cd php-dotenv
 phpize
 ./configure --enable-dotenv
 make
