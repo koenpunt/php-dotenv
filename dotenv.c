@@ -40,13 +40,14 @@ PHP_FUNCTION(dotenv_load)
   char *filename = ".env";
   int filename_len;
   zend_bool replace = 0;
+  char resolved_path[MAXPATHLEN];
+  HashTable env_files;
+  HashTable *vars;
 
   // recovers a filepath as string (p) and an boolean (b) from arguments
   if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|pb", &filename, &filename_len, &replace) == FAILURE) {
     RETURN_NULL();
   }
-
-  char resolved_path[MAXPATHLEN];
 
   // expand filepath
   if(VCWD_REALPATH(filename, resolved_path)){
@@ -55,12 +56,10 @@ PHP_FUNCTION(dotenv_load)
     }
   }
 
-  HashTable env_files = DOTENV_G(env_files);
+  env_files = DOTENV_G(env_files);
 
   // Initialize persistent hash table
   zend_hash_init(&env_files, 8, NULL, NULL, 1);
-
-  HashTable *vars;
 
   // Allocate hash table for current variables
   ALLOC_HASHTABLE(vars);
