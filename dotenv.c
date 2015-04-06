@@ -101,7 +101,7 @@ static void dotenv_parse_stream(php_stream *stream, HashTable *vars)
       // as long as it's not a =
       if(sscanf(buf, "%[^=]=%[^\n]", name, value)){
         // Store variable in hash table
-        zend_hash_update(vars, name, sizeof(name)+1, value, sizeof(value)+1, NULL);
+        zend_hash_update(vars, name, sizeof(name), value, sizeof(value), NULL);
       }
     }
   }
