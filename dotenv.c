@@ -1,29 +1,38 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
 #include "php.h"
+#include "php_streams.h"
+
+#if HAVE_DOTENV
+
+#include <stdbool.h>
+
+#ifdef ZTS
+#include "TSRM.h"
+#endif
+
+#include "main/SAPI.h"
+
 #include "php_dotenv.h"
 
 static zend_function_entry dotenv_functions[] = {
     PHP_FE(dotenv_load, NULL)
-    {NULL, NULL, NULL}
+    {NULL, NULL, 0, 0, 0}
 };
 
 zend_module_entry dotenv_module_entry = {
-#if ZEND_MODULE_API_NO >= 20010901
-    STANDARD_MODULE_HEADER,
-#endif
-    PHP_DOTENV_EXTNAME,
-    dotenv_functions,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-#if ZEND_MODULE_API_NO >= 20010901
-    PHP_DOTENV_VERSION,
-#endif
-    STANDARD_MODULE_PROPERTIES
+  STANDARD_MODULE_HEADER,
+  PHP_DOTENV_EXTNAME,
+  dotenv_functions,
+  PHP_MINIT(dotenv),
+  PHP_MSHUTDOWN(dotenv),
+  NULL, // PHP_RINIT(dotenv)
+  NULL, // PHP_RSHUTDOWN(dotenv)
+  NULL, // PHP_MINFO(dotenv)
+  PHP_DOTENV_VERSION,
+  STANDARD_MODULE_PROPERTIES
 };
 
 #ifdef COMPILE_DL_DOTENV
@@ -31,6 +40,11 @@ ZEND_GET_MODULE(dotenv)
 #endif
 
 ZEND_DECLARE_MODULE_GLOBALS(dotenv);
+static void php_dotenv_init_globals(zend_dotenv_globals *globals)
+{
+  // Initialize persistent hash table
+  zend_hash_init(&globals->env_files, 8, NULL, NULL, 1);
+}
 
 PHP_FUNCTION(dotenv_load)
 {
@@ -38,33 +52,29 @@ PHP_FUNCTION(dotenv_load)
   char *filename = ".env";
   int filename_len;
   zend_bool replace = 0;
+  char resolved_path[MAXPATHLEN];
+  HashTable env_files;
+  HashTable *vars;
 
   // recovers a filepath as string (p) and an boolean (b) from arguments
   if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|pb", &filename, &filename_len, &replace) == FAILURE) {
     RETURN_NULL();
   }
 
-  char resolved_path[MAXPATHLEN];
-
   // expand filepath
   if(VCWD_REALPATH(filename, resolved_path)){
-    if(php_check_open_basedir(resolved_path)){ // is this necessary?
+    if(php_check_open_basedir(resolved_path TSRMLS_CC)){ // is this necessary?
       RETURN_FALSE;
     }
   }
 
-  HashTable env_files = DOTENV_G(env_files);
-
-  // Initialize persistent hash table
-  zend_hash_init(&env_files, 8, NULL, NULL, 1);
-
-  HashTable *vars;
+  env_files = DOTENV_G(env_files);
 
   // Allocate hash table for current variables
   ALLOC_HASHTABLE(vars);
   zend_hash_init(vars, 8, NULL, NULL, 0); // 0 should be 1 to live on after request
 
-  if(zend_hash_find(&env_files, resolved_path, sizeof(resolved_path), (void **) &vars) == FAILURE){
+  if(zend_hash_find(&env_files TSRMLS_CC, resolved_path, sizeof(resolved_path), (void **) &vars) == FAILURE){
 
     // .env file is not found in hashtable so we parse the file
     php_stream *stream;
@@ -75,7 +85,7 @@ PHP_FUNCTION(dotenv_load)
     }
 
     dotenv_parse_stream(stream, vars);
-    zend_hash_update(&env_files, resolved_path, sizeof(resolved_path), vars, sizeof(vars), NULL);
+    zend_hash_update(&env_files TSRMLS_CC, resolved_path, sizeof(resolved_path), vars, sizeof(vars), NULL);
   }
 
   dotenv_inject_vars(vars, replace);
@@ -92,7 +102,7 @@ static void dotenv_parse_stream(php_stream *stream, HashTable *vars)
   char name[256];
   char value[256];
 
-  while(!php_stream_eof(stream)) {
+  while(!php_stream_eof(stream TSRMLS_CC)) {
     char buf[512];
 
     // Parse stream line by line
@@ -128,3 +138,23 @@ static void dotenv_inject_vars(HashTable *vars, bool replace)
       setenv(key, data, replace);
   }
 }
+
+
+PHP_MINIT_FUNCTION(dotenv)
+{
+  ZEND_INIT_MODULE_GLOBALS(dotenv, php_dotenv_init_globals, NULL);
+
+  return SUCCESS;
+}
+
+PHP_MSHUTDOWN_FUNCTION(dotenv)
+{
+#ifdef ZTS
+  ts_free_id(dotenv_globals_id);
+#else
+
+#endif
+  return SUCCESS;
+}
+
+#endif
